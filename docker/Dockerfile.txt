@@ -1,0 +1,43 @@
+# docker/Dockerfile
+FROM python:3.10-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    TZ=UTC
+
+# Install system dependencies including HDF5 libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gfortran \
+    libhdf5-dev \
+    libhdf5-103 \
+    libopenblas-dev \
+    liblapack-dev \
+    libgomp1 \
+    git \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create working directory
+WORKDIR /workspace
+RUN mkdir -p /workspace/src /workspace/data /workspace/output
+
+# Copy and install Python requirements
+COPY docker/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Copy source code
+COPY src/ /workspace/src/
+
+# Setup HDF5 plugin path for braingeneers
+RUN mkdir -p /usr/local/hdf5/lib/plugin && \
+    python3 -c "import sys; exec('''try:\n    import braingeneers, os, shutil\n    plugin_path = os.path.join(os.path.dirname(braingeneers.__file__), \"data\", \"mxw_h5_plugin\", \"Linux\", \"libcompression.so\")\n    if os.path.exists(plugin_path):\n        shutil.copy(plugin_path, \"/usr/local/hdf5/lib/plugin/\")\n        print(\"HDF5 plugin setup completed\")\n    else:\n        print(\"HDF5 plugin file not found\")\nexcept Exception as e:\n    print(f\"HDF5 plugin setup skipped: {e}\")\n    sys.exit(0)\n''')"
+
+ENV HDF5_PLUGIN_PATH=/usr/local/hdf5/lib/plugin
+ENV PYTHONPATH=/workspace/src:$PYTHONPATH
+
+# Set entry point
+ENTRYPOINT ["python", "/workspace/src/main.py"]

@@ -1,0 +1,126 @@
+# k8s/experiment_config.yaml
+# Example configuration for axolotl oscillation detection pipeline
+
+experiment:
+  name: "hippocampal_oscillations_study"
+  s3_output_base: "s3://braingeneers/oscillations/results/"
+  description: "Multi-type oscillation detection in hippocampal cultures"
+
+# Define different oscillation types with their detection parameters
+oscillation_types:
+  sharp_wave_ripples:
+    narrowband_key: "narrowRipples"   # 150-250 Hz filtered signal
+    wideband_key: "broadRipples"      # 80-250 Hz filtered signal
+    low_threshold: 3.5                # Starting/ending threshold (std dev)
+    high_threshold: 5.0               # Peak threshold (std dev)
+    min_duration: 20                  # Minimum duration (ms)
+    max_duration: 200                 # Maximum duration (ms)
+    require_sharp_wave: true          # Validate with coincident sharp wave
+    sharp_wave_window: 50             # Time window for sharp wave search (±ms)
+    
+  fast_ripples:
+    narrowband_key: "fastRipples"     # 250-500 Hz filtered signal
+    wideband_key: "ultraFastRipples"  # 200-600 Hz filtered signal
+    low_threshold: 3.0
+    high_threshold: 4.5
+    min_duration: 10
+    max_duration: 100
+    require_sharp_wave: false         # Fast ripples don't require sharp waves
+    
+  gamma_bursts:
+    narrowband_key: "gammaEnvelope"   # 30-100 Hz envelope
+    wideband_key: "gammaBand"         # 25-140 Hz filtered signal
+    low_threshold: 2.5
+    high_threshold: 4.0
+    min_duration: 50
+    max_duration: 500
+    require_sharp_wave: false
+
+# Processing parameters
+processing:
+  # Frequency bands for filtering (automatically generated from oscillation_types)
+  frequency_bands:
+    - name: "narrowRipples"
+      low: 150
+      high: 250
+    - name: "broadRipples"
+      low: 80
+      high: 250
+    - name: "fastRipples"
+      low: 250
+      high: 500
+    - name: "ultraFastRipples"
+      low: 200
+      high: 600
+    - name: "gammaEnvelope"
+      low: 30
+      high: 100
+    - name: "gammaBand"
+      low: 25
+      high: 140
+  
+  # Analysis window settings
+  analysis_window:
+    start: 0              # Start time (seconds, 0 = beginning)
+    length: null          # Duration (seconds, null = entire recording)
+
+# Visualization parameters
+visualization:
+  channels_per_plot: 5         # Number of channels per visualization plot
+  ripples_per_channel: 10      # Max ripples to show per channel
+  time_window: 0.3             # Time window around each ripple (seconds)
+  save_format: ["png", "svg"]  # Output formats for plots
+
+# Sample definitions with different experimental conditions
+samples:
+  - name: "culture_001"
+    description: "Primary hippocampal culture, 21 DIV"
+    conditions:
+      baseline:
+        description: "Control recording in normal ACSF"
+        files:
+          h5: "s3://braingeneers/datasets/culture_001/baseline/raw_data.h5"
+          zip: "s3://braingeneers/datasets/culture_001/baseline/spike_data.zip" 
+          npz: "s3://braingeneers/datasets/culture_001/baseline/lfp_data.npz"
+      
+      drug_treatment:
+        description: "Recording after 30min 4-AP treatment"
+        files:
+          h5: "s3://braingeneers/datasets/culture_001/4ap_treatment/raw_data.h5"
+          zip: "s3://braingeneers/datasets/culture_001/4ap_treatment/spike_data.zip"
+          npz: "s3://braingeneers/datasets/culture_001/4ap_treatment/lfp_data.npz"
+  
+  - name: "culture_002"
+    description: "Primary hippocampal culture, 28 DIV"
+    conditions:
+      baseline:
+        description: "Control recording in normal ACSF"
+        files:
+          h5: "s3://braingeneers/datasets/culture_002/baseline/raw_data.h5"
+          zip: "s3://braingeneers/datasets/culture_002/baseline/spike_data.zip"
+          npz: "s3://braingeneers/datasets/culture_002/baseline/lfp_data.npz"
+      
+      drug_treatment:
+        description: "Recording after 30min 4-AP treatment"  
+        files:
+          h5: "s3://braingeneers/datasets/culture_002/4ap_treatment/raw_data.h5"
+          zip: "s3://braingeneers/datasets/culture_002/4ap_treatment/spike_data.zip"
+          npz: "s3://braingeneers/datasets/culture_002/4ap_treatment/lfp_data.npz"
+
+# Optional: Advanced processing parameters
+advanced_processing:
+  # NPZ caching settings
+  enable_caching: true          # Use NPZ files to avoid re-computation
+  cache_s3_prefix: "cache/"     # S3 prefix for cached results
+  
+  # Cleanup settings
+  cleanup_temp_files: true      # Remove temporary files after processing
+  
+  # Statistical analysis settings
+  statistical_tests:
+    - "wilcoxon"                # Wilcoxon signed-rank test
+    - "mann_whitney"            # Mann-Whitney U test
+  
+  # Output organization
+  aggregate_statistics: true    # Generate cross-condition statistics
+  generate_summary_plots: true  # Create aggregate visualization plots

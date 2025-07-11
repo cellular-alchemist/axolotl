@@ -1,0 +1,257 @@
+RIPPLE DETECTION METHOD DOCUMENTATION
+=====================================
+
+OVERVIEW
+--------
+The detect_ripples method implements a power-based detection algorithm for identifying 
+hippocampal sharp wave-ripple (SWR) complexes in local field potential (LFP) recordings. 
+The algorithm follows Buzsáki's established approach using normalized power thresholding 
+with optional sharp wave validation.
+
+MATHEMATICAL ALGORITHM
+======================
+
+Signal Processing Pipeline:
+1. Input: Band-pass filtered LFP signal (typically 130-200 Hz for detection)
+2. Power calculation: Signal is squared element-wise (S²(t))
+3. Smoothing: Moving average filter applied to squared signal
+4. Normalization: Z-score normalization relative to baseline distribution
+5. Three-pass detection with temporal constraints
+6. Optional sharp wave validation
+
+Core Mathematics:
+- Power signal: P(t) = S²(t)
+- Smoothed power: P_smooth(t) = P(t) * h(t), where h(t) is moving average kernel
+- Normalized power: Z(t) = (P_smooth(t) - μ) / σ
+  where μ = mean(P_smooth) and σ = std(P_smooth) over specified time periods
+- Detection criterion: Z(t) > threshold
+
+THREE-PASS DETECTION ALGORITHM
+==============================
+
+Pass 1: Initial Threshold Crossing
+- Detect periods where normalized power > low_threshold
+- Find rising and falling edges of threshold crossings
+- Create candidate start-stop time pairs
+
+Pass 2: Peak Power Validation  
+- For each candidate period, find maximum normalized power
+- Reject periods where max power < high_threshold
+- Identify peak time within each valid period
+
+Pass 3: Temporal Constraint Filtering
+- Apply minimum duration filter (min_duration)
+- Apply maximum duration filter (max_duration) 
+- Apply minimum inter-ripple interval (min_interval)
+- Merge events that are too close together
+
+PARAMETER DEFINITIONS
+====================
+
+SIGNAL SELECTION PARAMETERS:
+----------------------------
+narrowband_key (str, default='narrowRipples')
+    Dictionary key for the 50-300 Hz filtered signal used for sharp wave validation.
+    This broader frequency band captures the full spectral content of ripple events.
+
+wideband_key (str, default='broadRipples') 
+    Dictionary key for the 130-200 Hz filtered signal used for primary detection.
+    This narrower band focuses on the core ripple frequency range and provides
+    better signal-to-noise ratio for detection.
+
+lfp_key (str, default='lfp')
+    Dictionary key for raw unfiltered LFP signal used for sharp wave detection.
+    Sharp waves are low-frequency components (1-30 Hz) that accompany ripples.
+
+DETECTION THRESHOLD PARAMETERS:
+------------------------------
+low_threshold (float, default=2.0)
+    Starting/ending threshold in standard deviations above mean power.
+    Controls sensitivity for ripple onset/offset detection.
+    Effect: Lower values → more sensitive, longer detected durations
+           Higher values → more specific, shorter detected durations
+
+high_threshold (float, default=5.0)  
+    Peak power threshold that must be exceeded for valid detection.
+    Controls false positive rate and detection specificity.
+    Effect: Lower values → more detections, higher false positive rate
+           Higher values → fewer detections, higher specificity
+
+sharp_wave_threshold (float, default=2.0)
+    Threshold for sharp wave negative deflection in standard deviations.
+    Used when require_sharp_wave=True for validation.
+    Effect: Lower values → more ripples pass sharp wave validation
+           Higher values → stricter sharp wave requirement
+
+TEMPORAL CONSTRAINT PARAMETERS:
+------------------------------
+min_duration (float, default=20)
+    Minimum ripple duration in milliseconds.
+    Filters out very brief power fluctuations that are likely artifacts.
+    Effect: Lower values → more short events detected (potential artifacts)
+           Higher values → only longer, more robust events detected
+
+max_duration (float, default=100)
+    Maximum ripple duration in milliseconds.
+    Prevents detection of extended high-power periods that are not true ripples.
+    Effect: Lower values → stricter duration filtering
+           Higher values → allows longer events (potential artifacts)
+
+min_interval (float, default=30)
+    Minimum time interval between consecutive ripples in milliseconds.
+    Prevents fragmentation of single events into multiple detections.
+    Effect: Lower values → allows closer spacing (potential over-segmentation)
+           Higher values → enforces temporal separation (potential merging)
+
+window_length (int, default=11)
+    Length of moving average smoothing window in samples.
+    Controls temporal smoothing of power signal before thresholding.
+    Effect: Smaller values → more sensitive to brief power fluctuations
+           Larger values → more temporal averaging, smoother detection
+
+SHARP WAVE VALIDATION PARAMETERS:
+---------------------------------
+require_sharp_wave (bool, default=True)
+    Whether to validate detected ripples with coincident sharp waves.
+    Sharp wave-ripple coupling is a hallmark of physiological SWR events.
+    Effect: True → only ripples with associated sharp waves are retained
+           False → all power-based detections are retained
+
+sharp_wave_window (float, default=50)
+    Time window (±milliseconds) around ripple peak to search for sharp waves.
+    Defines temporal coupling requirement between ripples and sharp waves.
+    Effect: Smaller values → stricter temporal coupling requirement
+           Larger values → more permissive temporal coupling
+
+sharp_wave_band (tuple, default=(1, 30))
+    Frequency band (Hz) for filtering LFP to detect sharp waves.
+    Sharp waves are low-frequency negative deflections.
+
+TIME WINDOW PARAMETERS:
+----------------------
+time_start (float, optional)
+    Analysis start time in seconds. If None, starts from beginning.
+    Allows analysis of specific time periods within recording.
+
+time_end (float, optional)  
+    Analysis end time in seconds. If None, processes until end.
+    Allows analysis of specific time periods within recording.
+
+restrict (array-like, optional)
+    Array of [start, end] time pairs (seconds) to restrict analysis.
+    Allows analysis of multiple discontinuous time periods.
+    Used for both analysis window and normalization statistics.
+
+CHANNEL SELECTION PARAMETERS:
+----------------------------
+neuron_file_path (str, optional)
+    Path to neuron position data for neighbor-based channel selection.
+    Allows focusing analysis on channels near recorded neurons.
+
+use_neuron_neighbors (bool, default=False)
+    If True, only analyze channels within proximity of recorded neurons.
+    Reduces computational load and focuses on physiologically relevant channels.
+
+OUTPUT STRUCTURE
+===============
+
+The method returns a dictionary with the following structure:
+
+Channel Data (integer keys):
+For each channel with detections, a pandas DataFrame containing:
+- start_time: Ripple start time (seconds, float)
+- end_time: Ripple end time (seconds, float) 
+- peak_time: Time of peak normalized power (seconds, float)
+- peak_normalized_power: Maximum z-scored power during event (float)
+- duration: Event duration (seconds, float)
+- has_sharp_wave: Boolean indicating sharp wave presence (if validation enabled)
+
+Metadata ('metadata' key):
+Dictionary containing all detection parameters and analysis settings:
+- fs: Sampling frequency (Hz)
+- All threshold parameters (low_threshold, high_threshold, etc.)
+- All temporal parameters (min_duration, max_duration, etc.) 
+- Signal keys used (narrowband_key, wideband_key, lfp_key)
+- Analysis time window (time_start, time_end, sample_start, sample_end)
+
+USAGE EXAMPLES
+==============
+
+Basic Detection:
+ripples = processor.detect_ripples()
+
+Conservative Detection (fewer false positives):
+ripples = processor.detect_ripples(
+    low_threshold=3.5,
+    high_threshold=6.0,
+    min_duration=30,
+    require_sharp_wave=True,
+    sharp_wave_window=30
+)
+
+Permissive Detection (higher sensitivity):
+ripples = processor.detect_ripples(
+    low_threshold=2.0,
+    high_threshold=3.5,
+    min_duration=15,
+    max_duration=200,
+    require_sharp_wave=False
+)
+
+Time-Limited Analysis:
+ripples = processor.detect_ripples(
+    time_start=100,
+    time_end=300,
+    low_threshold=3.0,
+    high_threshold=5.0
+)
+
+PARAMETER TUNING GUIDELINES
+==========================
+
+For High Specificity (fewer false positives):
+- Increase low_threshold (3.0-4.0)
+- Increase high_threshold (5.0-7.0)  
+- Decrease sharp_wave_window (20-40 ms)
+- Set require_sharp_wave=True
+- Increase min_duration (25-40 ms)
+
+For High Sensitivity (detect more events):
+- Decrease low_threshold (1.5-2.5)
+- Decrease high_threshold (3.0-4.5)
+- Increase sharp_wave_window (60-100 ms)
+- Set require_sharp_wave=False
+- Decrease min_duration (10-20 ms)
+
+For Different Experimental Conditions:
+- Anesthetized animals: Use higher thresholds
+- Freely moving animals: Consider stricter sharp wave validation
+- In vitro preparations: May need adjusted duration constraints
+- High noise recordings: Increase smoothing (window_length)
+
+COMPUTATIONAL CONSIDERATIONS
+===========================
+
+Performance Optimization:
+- Use time_start/time_end for testing parameters on smaller segments
+- Consider restricting analysis to channels near recorded neurons
+- Process channels in parallel if available
+- Cache results to avoid re-computation
+
+Memory Usage:
+- Large recordings may require processing in chunks
+- Consider downsampling very high frequency data
+- Output size scales with number of detections and channels
+
+Quality Control:
+- Always visualize detected events to validate parameters
+- Check detection rates across channels for consistency  
+- Examine duration and power distributions
+- Verify sharp wave coupling when validation is enabled
+
+REFERENCES
+==========
+- Buzsáki, G. (2015). Hippocampal sharp wave-ripple: A cognitive biomarker 
+  for episodic memory and planning. Hippocampus, 25(10), 1073-1188.
+- Csicsvari, J., et al. (1999). Oscillatory coupling of hippocampal pyramidal 
+  cells and interneurons in the behaving rat. Journal of Neuroscience, 19(1), 274-287.

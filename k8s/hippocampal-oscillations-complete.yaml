@@ -1,0 +1,230 @@
+# k8s/hippocampal-oscillations-complete.yaml
+# Single file containing both ConfigMap and Job for hippocampal oscillations experiment
+---
+# ConfigMap containing the experiment configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: axolotl-hippocampal-config
+  namespace: braingeneers
+  labels:
+    app: axolotl
+    component: config
+    experiment: hippocampal-oscillations-2023
+data:
+  hippocampal_oscillations_experiment.yaml: |
+    # Hippocampal Oscillations Experiment Configuration
+    experiment:
+      name: "hippocampal_oscillations_multimodal_2023"
+      s3_output_base: "s3://braingeneers/personal/dani/oscillations/results/2023-12-03-e-Hc112823_avv9hckcr1/"
+      description: "Multi-condition analysis of hippocampal oscillations: baseline vs optogenetics vs kainic acid"
+
+    # Define oscillation types based on neuroscience literature
+    oscillation_types:
+      # Ripples: 80-200 Hz, tens to hundreds of ms, memory consolidation
+      ripples:
+        narrowband_key: "ripples_narrow"
+        wideband_key: "ripples_wide"
+        low_threshold: 3.0
+        high_threshold: 4.5
+        min_duration: 30
+        max_duration: 300
+        require_sharp_wave: false
+        
+      # Sharp Wave-Ripples: Combined events with sharp wave + 110-200 Hz ripples
+      sharp_wave_ripples:
+        narrowband_key: "swr_ripples"
+        wideband_key: "swr_broad"
+        low_threshold: 3.5
+        high_threshold: 5.5
+        min_duration: 40
+        max_duration: 200
+        require_sharp_wave: true
+        sharp_wave_window: 60
+        
+      # Fast Ripples/HFOs: 200-500 Hz, very brief, pathological markers
+      fast_ripples:
+        narrowband_key: "hfo_narrow"
+        wideband_key: "hfo_wide"
+        low_threshold: 4.0
+        high_threshold: 6.0
+        min_duration: 10
+        max_duration: 50
+        require_sharp_wave: false
+
+    # Processing parameters
+    processing:
+      frequency_bands:
+        - name: "ripples_narrow"
+          low: 110
+          high: 200
+        - name: "ripples_wide"
+          low: 80
+          high: 200
+        - name: "swr_ripples"
+          low: 110
+          high: 200
+        - name: "swr_broad"
+          low: 80
+          high: 250
+        - name: "hfo_narrow"
+          low: 250
+          high: 400
+        - name: "hfo_wide"
+          low: 200
+          high: 500
+      analysis_window:
+        start: 0
+        length: null
+
+    # Visualization parameters
+    visualization:
+      channels_per_plot: 8
+      ripples_per_channel: 15
+      time_window: 0.4
+      save_format: ["png", "svg"]
+
+    # Sample definition with three experimental conditions
+    samples:
+      - name: "2023-12-03-e-Hc112823_avv9hckcr1"
+        description: "Primary hippocampal culture with multimodal interventions"
+        conditions:
+          baseline:
+            description: "Control recording"
+            files:
+              h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112723_hckcr1_21841_120323_base2.raw.h5"
+              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_base2_acqm.zip"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112723_hckcr1_21841_120323_base2_lfp.npz"
+          
+          optogenetics:
+            description: "Optogenetic intervention"
+            files:
+              h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112823_avv9hckcr1_21841_120323_1.raw.h5"
+              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_1_acqm.zip"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112823_avv9hckcr1_21841_120323_1_lfp.npz"
+          
+          acid:
+            description: "Kainic acid treatment"
+            files:
+              h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112823_avv9hckcr1_21841_120323_3.raw.h5"
+              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_3_acqm.zip"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112823_avv9hckcr1_21841_120323_3_lfp.npz"
+
+    # Advanced processing parameters
+    advanced_processing:
+      enable_caching: true
+      cache_s3_prefix: "cache/"
+      cleanup_temp_files: true
+      statistical_tests:
+        - "wilcoxon"
+        - "mann_whitney"
+        - "kruskal_wallis"
+      aggregate_statistics: true
+      generate_summary_plots: true
+      condition_comparisons:
+        - conditions: ["baseline", "optogenetics"]
+          description: "Control vs Optogenetic intervention"
+        - conditions: ["baseline", "acid"] 
+          description: "Control vs Kainic acid treatment"
+        - conditions: ["optogenetics", "acid"]
+          description: "Optogenetic vs Kainic acid treatment"
+
+---
+# Kubernetes Job for hippocampal oscillations experiment
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: axolotl-hippocampal-oscillations-2023-12-03
+  namespace: braingeneers
+  labels:
+    app: axolotl
+    component: oscillation-detector
+    experiment: hippocampal-oscillations-2023
+    sample: "2023-12-03-e-Hc112823_avv9hckcr1"
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: axolotl
+        component: oscillation-detector
+        experiment: hippocampal-oscillations-2023
+    spec:
+      containers:
+      - name: axolotl
+        image: registry.gitlab.com/braingeneers/axolotl:latest
+        imagePullPolicy: Always
+        
+        # Main command and arguments
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+            export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            cd /workspace
+            echo "Starting hippocampal oscillations analysis..."
+            echo "Sample: 2023-12-03-e-Hc112823_avv9hckcr1"
+            echo "Conditions: baseline, optogenetics, kainic acid"
+            echo "Oscillations: ripples, sharp wave ripples, fast ripples/HFOs"
+            echo "Configuration: ${EXPERIMENT_CONFIG_PATH}"
+            python /workspace/src/main.py ${EXPERIMENT_CONFIG_PATH}
+        
+        # Environment variables
+        env:
+        - name: EXPERIMENT_CONFIG_PATH
+          value: "/workspace/config/hippocampal_oscillations_experiment.yaml"
+        - name: PYTHONPATH
+          value: "/workspace/src"
+        - name: EXPERIMENT_NAME
+          value: "hippocampal_oscillations_multimodal_2023"
+        - name: SAMPLE_NAME
+          value: "2023-12-03-e-Hc112823_avv9hckcr1"
+        
+        # Resource requirements - increased for multi-condition analysis
+        resources:
+          requests:
+            cpu: "6"
+            memory: "24Gi"
+          limits:
+            cpu: "8"
+            memory: "32Gi"
+        
+        # Volume mounts
+        volumeMounts:
+        # Output directory for results
+        - name: output-volume
+          mountPath: /workspace/output
+        
+        # S3 credentials for data access
+        - name: prp-s3-credentials
+          mountPath: "/root/.aws/credentials"
+          subPath: "credentials"
+        
+        # Experiment configuration
+        - name: config-volume
+          mountPath: /workspace/config
+      
+      # Pod restart policy
+      restartPolicy: Never
+      
+      # Image pull secrets for private registry
+      imagePullSecrets:
+      - name: gitlab-registry
+      
+      # Volumes
+      volumes:
+      # Persistent volume for output storage
+      - name: output-volume
+        persistentVolumeClaim:
+          claimName: demeter-output-pvc
+      
+      # S3 credentials secret
+      - name: prp-s3-credentials
+        secret:
+          secretName: prp-s3-credentials
+          defaultMode: 256
+      
+      # Configuration from ConfigMap
+      - name: config-volume
+        configMap:
+          name: axolotl-hippocampal-config

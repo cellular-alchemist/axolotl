@@ -1,0 +1,146 @@
+# k8s/hippocampal-oscillations-configmap.yaml
+# ConfigMap containing the experiment configuration for hippocampal oscillations analysis
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: axolotl-hippocampal-config
+  namespace: braingeneers
+  labels:
+    app: axolotl
+    component: config
+    experiment: hippocampal-oscillations-2023
+data:
+  hippocampal_oscillations_experiment.yaml: |
+    # Hippocampal Oscillations Experiment Configuration
+    # Analysis of ripples, sharp wave ripples, and pathological HFOs
+    # Sample: 2023-12-03-e-Hc112823_avv9hckcr1 under baseline, optogenetics, and kainic acid conditions
+
+    experiment:
+      name: "hippocampal_oscillations_multimodal_2023"
+      s3_output_base: "s3://braingeneers/personal/dani/oscillations/results/2023-12-03-e-Hc112823_avv9hckcr1/"
+      description: "Multi-condition analysis of hippocampal oscillations: baseline vs optogenetics vs kainic acid"
+
+    # Define oscillation types based on neuroscience literature
+    oscillation_types:
+      # Ripples: 80-200 Hz, tens to hundreds of ms, memory consolidation
+      ripples:
+        narrowband_key: "ripples_narrow"     # 110-200 Hz (core ripple band)
+        wideband_key: "ripples_wide"         # 80-200 Hz (full ripple band)
+        low_threshold: 3.0                   # Starting/ending threshold (std dev)
+        high_threshold: 4.5                  # Peak threshold (std dev)
+        min_duration: 30                     # Minimum duration (ms) - ~3 cycles at 110Hz
+        max_duration: 300                    # Maximum duration (ms) - ~9 cycles
+        require_sharp_wave: false            # Ripples can occur without sharp waves
+        
+      # Sharp Wave-Ripples: Combined events with sharp wave + 110-200 Hz ripples
+      sharp_wave_ripples:
+        narrowband_key: "swr_ripples"        # 110-200 Hz ripple component
+        wideband_key: "swr_broad"            # 80-250 Hz for sharp wave detection
+        low_threshold: 3.5                   # Higher threshold for SWRs
+        high_threshold: 5.5                  # Peak threshold (std dev)
+        min_duration: 40                     # Minimum duration (ms) - sharp wave duration
+        max_duration: 200                    # Maximum duration (ms)
+        require_sharp_wave: true             # Must have coincident sharp wave
+        sharp_wave_window: 60                # Time window for sharp wave search (±ms)
+        
+      # Fast Ripples/HFOs: 200-500 Hz, very brief, pathological markers
+      fast_ripples:
+        narrowband_key: "hfo_narrow"         # 250-400 Hz (core HFO band)
+        wideband_key: "hfo_wide"             # 200-500 Hz (full HFO band)
+        low_threshold: 4.0                   # Higher threshold for pathological events
+        high_threshold: 6.0                  # Peak threshold (std dev)
+        min_duration: 10                     # Minimum duration (ms) - very brief
+        max_duration: 50                     # Maximum duration (ms) - brief bursts
+        require_sharp_wave: false            # HFOs are independent events
+
+    # Processing parameters
+    processing:
+      # Frequency bands for filtering
+      frequency_bands:
+        # Ripple bands
+        - name: "ripples_narrow"
+          low: 110
+          high: 200
+        - name: "ripples_wide"
+          low: 80
+          high: 200
+        # Sharp wave-ripple bands  
+        - name: "swr_ripples"
+          low: 110
+          high: 200
+        - name: "swr_broad"
+          low: 80
+          high: 250
+        # HFO/Fast ripple bands
+        - name: "hfo_narrow"
+          low: 250
+          high: 400
+        - name: "hfo_wide"
+          low: 200
+          high: 500
+      
+      # Analysis window settings
+      analysis_window:
+        start: 0              # Start time (seconds, 0 = beginning)
+        length: null          # Duration (seconds, null = entire recording)
+
+    # Visualization parameters
+    visualization:
+      channels_per_plot: 8             # More channels for detailed visualization
+      ripples_per_channel: 15          # More events per channel for analysis
+      time_window: 0.4                 # Longer time window for context
+      save_format: ["png", "svg"]      # Output formats for plots
+
+    # Sample definition with three experimental conditions
+    samples:
+      - name: "2023-12-03-e-Hc112823_avv9hckcr1"
+        description: "Primary hippocampal culture with multimodal interventions"
+        conditions:
+          baseline:
+            description: "Control recording"
+            files:
+              h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112723_hckcr1_21841_120323_base2.raw.h5"
+              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_base2_acqm.zip"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112723_hckcr1_21841_120323_base2_lfp.npz"
+          
+          optogenetics:
+            description: "Optogenetic intervention"
+            files:
+              h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112823_avv9hckcr1_21841_120323_1.raw.h5"
+              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_1_acqm.zip"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112823_avv9hckcr1_21841_120323_1_lfp.npz"
+          
+          acid:
+            description: "Kainic acid treatment"
+            files:
+              h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112823_avv9hckcr1_21841_120323_3.raw.h5"
+              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_3_acqm.zip"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112823_avv9hckcr1_21841_120323_3_lfp.npz"
+
+    # Advanced processing parameters
+    advanced_processing:
+      # NPZ caching settings
+      enable_caching: true              # Use NPZ files to avoid re-computation
+      cache_s3_prefix: "cache/"         # S3 prefix for cached results
+      
+      # Cleanup settings
+      cleanup_temp_files: true          # Remove temporary files after processing
+      
+      # Statistical analysis settings for cross-condition comparison
+      statistical_tests:
+        - "wilcoxon"                    # Wilcoxon signed-rank test (paired)
+        - "mann_whitney"                # Mann-Whitney U test (unpaired)
+        - "kruskal_wallis"              # Kruskal-Wallis test (3+ groups)
+      
+      # Output organization
+      aggregate_statistics: true        # Generate cross-condition statistics
+      generate_summary_plots: true      # Create aggregate visualization plots
+      
+      # Multi-condition analysis parameters
+      condition_comparisons:
+        - conditions: ["baseline", "optogenetics"]
+          description: "Control vs Optogenetic intervention"
+        - conditions: ["baseline", "acid"] 
+          description: "Control vs Kainic acid treatment"
+        - conditions: ["optogenetics", "acid"]
+          description: "Optogenetic vs Kainic acid treatment"

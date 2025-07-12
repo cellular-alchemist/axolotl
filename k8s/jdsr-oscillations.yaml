@@ -1,5 +1,23 @@
-# k8s/hippocampal-oscillations-complete.yaml
-# Single file containing both ConfigMap and Job for hippocampal oscillations experiment
+# k8s/jdsr-oscillations.yaml
+# Complete single-file deployment: PVC, ConfigMap, and Job for hippocampal oscillations experiment
+---
+# Persistent Volume Claim for output storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jdsr-oscillations-output-pvc
+  namespace: braingeneers
+  labels:
+    app: axolotl
+    experiment: jdsr-oscillations
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: rook-cephfs
+
 ---
 # ConfigMap containing the experiment configuration
 apiVersion: v1
@@ -134,7 +152,7 @@ data:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: axolotl-hippocampal-oscillations-2023-12-03
+  name: jdsr-oscillations-job
   namespace: braingeneers
   labels:
     app: axolotl
@@ -216,8 +234,8 @@ spec:
       # Persistent volume for output storage
       - name: output-volume
         persistentVolumeClaim:
-          claimName: demeter-output-pvc
-      
+          claimName: jdsr-oscillations-output-pvc
+
       # S3 credentials secret
       - name: prp-s3-credentials
         secret:

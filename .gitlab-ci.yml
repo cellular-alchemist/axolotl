@@ -6,7 +6,7 @@ stages:
 variables:
   # GitLab Container Registry URL
   REGISTRY_URL: $CI_REGISTRY
-  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  IMAGE_NAME: $CI_REGISTRY_IMAGE/axolotl
   IMAGE_TAG: $CI_COMMIT_SHORT_SHA
 
 # Build Docker image using Kaniko

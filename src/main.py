@@ -273,7 +273,9 @@ def main():
         
         # Initialize S3 handler
         logger.info("Initializing S3 handler")
-        s3_handler = S3Handler()
+        # Use braingeneers S3 endpoint or environment variable override
+        s3_endpoint = os.environ.get('AWS_ENDPOINT_URL', 'https://s3.braingeneers.gi.ucsc.edu')
+        s3_handler = S3Handler(endpoint_url=s3_endpoint)
         
         # Initialize oscillation processor
         oscillation_processor = OscillationProcessor()

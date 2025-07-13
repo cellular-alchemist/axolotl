@@ -173,16 +173,24 @@ class S3Handler:
             # Upload file
             self.logger.debug(f"Uploading {local_path} to {s3_path}")
             
-            extra_args = {}
-            if progress_callback:
-                extra_args['Callback'] = progress_callback
-            
-            self.s3_client.upload_file(
-                Filename=local_path,
-                Bucket=bucket,
-                Key=key,
-                ExtraArgs=extra_args
-            )
+            # Use direct upload without Callback in ExtraArgs for compatibility
+            if progress_callback and file_size:
+                # For braingeneers S3, we'll use a simpler approach without progress callback in ExtraArgs
+                self.s3_client.upload_file(
+                    Filename=local_path,
+                    Bucket=bucket,
+                    Key=key
+                )
+                # Update progress bar to completion
+                if 'pbar' in locals():
+                    pbar.update(file_size)
+            else:
+                # Simple upload without progress
+                self.s3_client.upload_file(
+                    Filename=local_path,
+                    Bucket=bucket,
+                    Key=key
+                )
             
             if 'pbar' in locals():
                 pbar.close()
@@ -245,16 +253,24 @@ class S3Handler:
             # Download file
             self.logger.debug(f"Downloading {s3_path} to {local_path}")
             
-            extra_args = {}
-            if progress_callback:
-                extra_args['Callback'] = progress_callback
-            
-            self.s3_client.download_file(
-                Bucket=bucket,
-                Key=key,
-                Filename=local_path,
-                ExtraArgs=extra_args
-            )
+            # Use direct download without Callback in ExtraArgs for compatibility
+            if progress_callback and file_size:
+                # For braingeneers S3, we'll use a simpler approach without progress callback in ExtraArgs
+                self.s3_client.download_file(
+                    Bucket=bucket,
+                    Key=key,
+                    Filename=local_path
+                )
+                # Update progress bar to completion
+                if 'pbar' in locals():
+                    pbar.update(file_size)
+            else:
+                # Simple download without progress
+                self.s3_client.download_file(
+                    Bucket=bucket,
+                    Key=key,
+                    Filename=local_path
+                )
             
             if 'pbar' in locals():
                 pbar.close()

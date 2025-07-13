@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: s3-test-job
+  namespace: braingeneers
+  labels:
+    app: axolotl
+    component: s3-test
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: axolotl
+        component: s3-test
+    spec:
+      containers:
+      - name: s3-test
+        image: gitlab-registry.nrp-nautilus.io/cellular-alchemist/axolotl:latest
+        imagePullPolicy: Always
+        
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            export AWS_ENDPOINT_URL=https://s3.braingeneers.gi.ucsc.edu
+            cd /workspace
+            echo "Testing S3 download with braingeneers endpoint..."
+            python3 -c "
+            import os
+            import sys
+            sys.path.append('/workspace/src')
+            from utils.s3_handler import S3Handler
+            
+            print('Initializing S3 handler with braingeneers endpoint...')
+            s3_handler = S3Handler(endpoint_url='https://s3.braingeneers.gi.ucsc.edu')
+            print('S3 handler initialized successfully!')
+            
+            # Test a simple download
+            s3_path = 's3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112723_hckcr1_21841_120323_base2_lfp.npz'
+            local_path = '/tmp/test_download.npz'
+            print(f'Testing download from {s3_path}...')
+            
+            success = s3_handler.download_file(s3_path, local_path)
+            if success:
+                print('✅ S3 download test PASSED!')
+                import os
+                file_size = os.path.getsize(local_path)
+                print(f'Downloaded file size: {file_size} bytes')
+            else:
+                print('❌ S3 download test FAILED!')
+                sys.exit(1)
+            "
+        
+        env:
+        - name: AWS_ENDPOINT_URL
+          value: "https://s3.braingeneers.gi.ucsc.edu"
+        
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        
+        volumeMounts:
+        - name: prp-s3-credentials
+          mountPath: "/root/.aws/credentials"
+          subPath: "credentials"
+      
+      restartPolicy: Never
+      
+      imagePullSecrets:
+      - name: axolotl-registry
+      
+      volumes:
+      - name: prp-s3-credentials
+        secret:
+          secretName: prp-s3-credentials
+          defaultMode: 256

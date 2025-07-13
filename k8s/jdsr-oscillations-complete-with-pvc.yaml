@@ -1,5 +1,5 @@
 # k8s/jdsr-oscillations-complete-with-pvc.yaml
-# Complete deployment including PVC, ConfigMap, and Job
+# Complete deployment including PVC, ConfigMap, and Job.
 ---
 # Persistent Volume Claim for output storage
 apiVersion: v1
@@ -170,7 +170,7 @@ spec:
     spec:
       containers:
       - name: axolotl
-        image: registry.gitlab.com/braingeneers/axolotl:latest
+        image: gitlab-registry.nrp-nautilus.io/cellular-alchemist/axolotl:latest
         imagePullPolicy: Always
         
         # Main command and arguments
@@ -227,7 +227,7 @@ spec:
       
       # Image pull secrets for private registry
       imagePullSecrets:
-      - name: gitlab-registry
+      - name: axolotl-registry
       
       # Volumes
       volumes:

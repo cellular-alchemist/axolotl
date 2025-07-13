@@ -181,7 +181,7 @@ def _add_basic_frequency_bands(processor: 'LFPDataProcessor', logger: logging.Lo
     """
     
     # Check which bands are already available in the waves data
-    available_bands = list(processor.waves.files)
+    available_bands = list(processor.waves.keys())
     logger.debug(f"Available frequency bands in data: {available_bands}")
     
     # Define basic bands that are commonly needed

@@ -169,7 +169,12 @@ def download_condition_files(files: Dict, temp_dir: Path, s3_handler: S3Handler,
         logger.debug(f"    Downloading {file_type}: {s3_path}")
         
         if not s3_handler.download_file(s3_path, str(local_path)):
-            raise RuntimeError(f"Failed to download {file_type} file from {s3_path}")
+            if file_type == 'zip':
+                # Spike data is optional - continue without it
+                logger.warning(f"Spike data not available: {s3_path}")
+                continue
+            else:
+                raise RuntimeError(f"Failed to download {file_type} file from {s3_path}")
         
         local_files[file_type] = str(local_path)
     

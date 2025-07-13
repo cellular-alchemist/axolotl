@@ -86,7 +86,8 @@ def _validate_file_paths(file_paths: Dict[str, str]) -> None:
         Dictionary of file paths to validate
     """
     
-    required_files = ['h5', 'zip', 'npz']
+    required_files = ['h5', 'npz']  # zip (spike data) is optional
+    optional_files = ['zip']
     
     for file_type in required_files:
         if file_type not in file_paths:

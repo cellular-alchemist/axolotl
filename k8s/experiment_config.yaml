@@ -48,10 +48,10 @@ processing:
       high: 250
     - name: "fastRipples"
       low: 250
-      high: 500
+      high: 450
     - name: "ultraFastRipples"
       low: 200
-      high: 600
+      high: 450
     - name: "gammaEnvelope"
       low: 30
       high: 100

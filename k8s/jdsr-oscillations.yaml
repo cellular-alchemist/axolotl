@@ -228,7 +228,7 @@ spec:
       
       # Image pull secrets for private registry
       imagePullSecrets:
-      - name: axolotl-registry
+      - name: gitlab-registry
       
       # Volumes
       volumes:

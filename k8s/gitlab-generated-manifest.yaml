@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: axolotl-${CI_COMMIT_SHORT_SHA}
+  name: axolotl-549bc9ea
   namespace: braingeneers
 spec:
   backoffLimit: 0
@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
       - name: axolotl
-        image: ${IMAGE_NAME}:${IMAGE_TAG}
+        image: gitlab-registry.nrp-nautilus.io/cellular-alchemist/axolotl:549bc9ea
         imagePullPolicy: Always
         command: ["/bin/bash", "-c"]
         args:

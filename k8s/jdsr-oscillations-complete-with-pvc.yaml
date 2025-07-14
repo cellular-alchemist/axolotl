@@ -179,6 +179,7 @@ spec:
           - |
             export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
             export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            export AWS_ENDPOINT_URL=https://s3.braingeneers.gi.ucsc.edu
             cd /workspace
             echo "Starting hippocampal oscillations analysis..."
             echo "Sample: 2023-12-03-e-Hc112823_avv9hckcr1"
@@ -227,7 +228,7 @@ spec:
       
       # Image pull secrets for private registry
       imagePullSecrets:
-      - name: axolotl-registry
+      - name: gitlab-registry
       
       # Volumes
       volumes:

@@ -18,6 +18,21 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
+def make_json_serializable(obj):
+    """Convert pandas DataFrames and numpy arrays to JSON serializable format"""
+    if isinstance(obj, dict):
+        return {key: make_json_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [make_json_serializable(item) for item in obj]
+    elif hasattr(obj, 'to_dict'):  # pandas DataFrame
+        return obj.to_dict('records')
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
+    else:
+        return obj
+
 # Configure matplotlib for headless environment
 import matplotlib
 matplotlib.use('Agg')
@@ -243,7 +258,7 @@ def aggregate_statistics(all_results: List[Dict], config: Dict, s3_handler: S3Ha
             'total_conditions_processed': len(all_results),
             'successful_conditions': len([r for r in all_results if r['status'] == 'success']),
             'failed_conditions': len([r for r in all_results if r['status'] == 'failed']),
-            'results': all_results
+            'results': make_json_serializable(all_results)
         }
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:

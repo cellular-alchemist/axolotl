@@ -61,10 +61,9 @@ processing:
     # HFO/Fast ripple bands
     - name: "hfo_narrow"
       low: 250
-      high: 400
-    - name: "hfo_wide"
-      low: 200
-      high: 500
+      high: 400        - name: "hfo_wide"
+          low: 200
+          high: 450
   
   # Analysis window settings
   analysis_window:

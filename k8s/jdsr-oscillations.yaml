@@ -90,7 +90,7 @@ data:
           high: 400
         - name: "hfo_wide"
           low: 200
-          high: 500
+          high: 450
       analysis_window:
         start: 0
         length: null

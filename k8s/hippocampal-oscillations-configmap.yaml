@@ -43,10 +43,10 @@ data:
         require_sharp_wave: true             # Must have coincident sharp wave
         sharp_wave_window: 60                # Time window for sharp wave search (±ms)
         
-      # Fast Ripples/HFOs: 200-500 Hz, very brief, pathological markers
+      # Fast Ripples/HFOs: 200-450 Hz, very brief, pathological markers
       fast_ripples:
         narrowband_key: "hfo_narrow"         # 250-400 Hz (core HFO band)
-        wideband_key: "hfo_wide"             # 200-500 Hz (full HFO band)
+        wideband_key: "hfo_wide"             # 200-450 Hz (full HFO band)
         low_threshold: 4.0                   # Higher threshold for pathological events
         high_threshold: 6.0                  # Peak threshold (std dev)
         min_duration: 10                     # Minimum duration (ms) - very brief
@@ -77,7 +77,7 @@ data:
           high: 400
         - name: "hfo_wide"
           low: 200
-          high: 500
+          high: 450
       
       # Analysis window settings
       analysis_window:

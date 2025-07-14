@@ -8,56 +8,59 @@ experiment:
 
 # Define different oscillation types with their detection parameters
 oscillation_types:
+  ripples:
+    narrowband_key: "ripples_narrow"   # 110-200 Hz for ripple detection
+    wideband_key: "ripples_wide"       # 80-200 Hz for broader ripple context
+    low_threshold: 3.0                 # Starting/ending threshold (std dev)
+    high_threshold: 5.0                # Peak threshold (std dev)
+    min_duration: 20                   # Minimum duration (ms)
+    max_duration: 150                  # Maximum duration (ms)
+    require_sharp_wave: false          # Ripples can occur independently
+    
   sharp_wave_ripples:
-    narrowband_key: "narrowRipples"   # 150-250 Hz filtered signal
-    wideband_key: "broadRipples"      # 80-250 Hz filtered signal
-    low_threshold: 3.5                # Starting/ending threshold (std dev)
-    high_threshold: 5.0               # Peak threshold (std dev)
-    min_duration: 20                  # Minimum duration (ms)
-    max_duration: 200                 # Maximum duration (ms)
-    require_sharp_wave: true          # Validate with coincident sharp wave
-    sharp_wave_window: 50             # Time window for sharp wave search (±ms)
+    narrowband_key: "swr_ripples"      # 110-200 Hz for ripple component
+    wideband_key: "swr_broad"          # 80-250 Hz for broader SWR context
+    low_threshold: 3.5                 # Starting/ending threshold (std dev)
+    high_threshold: 5.0                # Peak threshold (std dev)
+    min_duration: 20                   # Minimum duration (ms)
+    max_duration: 200                  # Maximum duration (ms)
+    require_sharp_wave: true           # Must have coincident sharp wave
+    sharp_wave_window: 50              # Time window for sharp wave search (±ms)
     
   fast_ripples:
-    narrowband_key: "fastRipples"     # 250-500 Hz filtered signal
-    wideband_key: "ultraFastRipples"  # 200-600 Hz filtered signal
-    low_threshold: 3.0
-    high_threshold: 4.5
-    min_duration: 10
-    max_duration: 100
-    require_sharp_wave: false         # Fast ripples don't require sharp waves
-    
-  gamma_bursts:
-    narrowband_key: "gammaEnvelope"   # 30-100 Hz envelope
-    wideband_key: "gammaBand"         # 25-140 Hz filtered signal
-    low_threshold: 2.5
-    high_threshold: 4.0
-    min_duration: 50
-    max_duration: 500
-    require_sharp_wave: false
+    narrowband_key: "hfo_narrow"       # 250-400 Hz for HFO detection
+    wideband_key: "hfo_wide"           # 200-450 Hz for broader HFO context
+    low_threshold: 3.0                 # Starting/ending threshold (std dev)
+    high_threshold: 4.5                # Peak threshold (std dev)
+    min_duration: 10                   # Minimum duration (ms)
+    max_duration: 100                  # Maximum duration (ms)
+    require_sharp_wave: false          # HFOs don't require sharp waves
 
 # Processing parameters
 processing:
-  # Frequency bands for filtering (automatically generated from oscillation_types)
+  # Frequency bands for filtering (matched to oscillation detection needs)
   frequency_bands:
-    - name: "narrowRipples"
-      low: 150
-      high: 250
-    - name: "broadRipples"
+    - name: "sharpWave"
+      low: 1
+      high: 30
+    - name: "ripples_narrow"  
+      low: 110
+      high: 200
+    - name: "ripples_wide"
+      low: 80
+      high: 200
+    - name: "swr_ripples"
+      low: 110
+      high: 200
+    - name: "swr_broad"
       low: 80
       high: 250
-    - name: "fastRipples"
+    - name: "hfo_narrow"
       low: 250
-      high: 450
-    - name: "ultraFastRipples"
+      high: 400
+    - name: "hfo_wide"
       low: 200
       high: 450
-    - name: "gammaEnvelope"
-      low: 30
-      high: 100
-    - name: "gammaBand"
-      low: 25
-      high: 140
   
   # Analysis window settings
   analysis_window:

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: s3-test
-        image: gitlab-registry.nrp-nautilus.io/cellular-alchemist/axolotl:latest
+        image: gitlab-registry.nrp-nautilus.io/cellular-alchemist/axolotl:97f988f
         imagePullPolicy: Always
         
         command: ["/bin/bash", "-c"]

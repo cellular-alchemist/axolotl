@@ -5286,7 +5286,7 @@ class LFPDataProcessor:
             })
             
             # Store in the results dictionary using the original channel index
-            ripples[channel_map[i]] = ripple_data
+            ripples[valid_channels[i]] = ripple_data
         
         # Add metadata to the ripples dictionary
         ripples['metadata'] = {

@@ -258,11 +258,14 @@ def aggregate_statistics(all_results: List[Dict], config: Dict, s3_handler: S3Ha
             'total_conditions_processed': len(all_results),
             'successful_conditions': len([r for r in all_results if r['status'] == 'success']),
             'failed_conditions': len([r for r in all_results if r['status'] == 'failed']),
-            'results': make_json_serializable(all_results)
+            'results': all_results
         }
         
+        # Make the entire summary data JSON serializable
+        serializable_summary = make_json_serializable(summary_data)
+        
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump(summary_data, f, indent=2)
+            json.dump(serializable_summary, f, indent=2)
             temp_path = f.name
         
         s3_handler.upload_file(temp_path, summary_path)

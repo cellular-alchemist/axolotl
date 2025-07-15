@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
       - name: axolotl
-        image: gitlab-registry.nrp-nautilus.io/cellular-alchemist/axolotl:549bc9ea
+        image: gitlab-registry.nrp-nautilus.io/cellular-alchemist/axolotl:4cf4b40
         imagePullPolicy: Always
         command: ["/bin/bash", "-c"]
         args:

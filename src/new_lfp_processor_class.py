@@ -5133,6 +5133,10 @@ class LFPDataProcessor:
             except Exception as e:
                 print(f"Error loading neuron data: {str(e)}. Using all channels.")
                 # Continue with all channels if there's an error
+                # Properly initialize fallback values
+                valid_channels = list(range(n_channels))
+                channels_to_process = np.arange(n_channels)
+                channel_map = {i: i for i in range(n_channels)}
         
         # Process each channel
         for i, ch in enumerate(channels_to_process):
@@ -5286,7 +5290,7 @@ class LFPDataProcessor:
             })
             
             # Store in the results dictionary using the original channel index
-            ripples[valid_channels[i]] = ripple_data
+            ripples[channel_map[i]] = ripple_data
         
         # Add metadata to the ripples dictionary
         ripples['metadata'] = {

@@ -20,16 +20,24 @@ from typing import Dict, List, Optional, Any
 
 def make_json_serializable(obj):
     """Convert pandas DataFrames and numpy arrays to JSON serializable format"""
+    import pandas as pd
+    
     if isinstance(obj, dict):
         return {key: make_json_serializable(value) for key, value in obj.items()}
     elif isinstance(obj, list):
         return [make_json_serializable(item) for item in obj]
-    elif hasattr(obj, 'to_dict'):  # pandas DataFrame
+    elif isinstance(obj, pd.DataFrame):
+        return obj.to_dict('records')
+    elif isinstance(obj, pd.Series):
+        return obj.to_dict()
+    elif hasattr(obj, 'to_dict') and hasattr(obj, 'iloc'):  # Additional pandas check
         return obj.to_dict('records')
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif isinstance(obj, (np.integer, np.floating)):
+    elif isinstance(obj, (np.integer, np.floating, np.bool_)):
         return obj.item()
+    elif pd.isna(obj):
+        return None
     else:
         return obj
 

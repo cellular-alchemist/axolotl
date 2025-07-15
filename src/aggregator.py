@@ -15,7 +15,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from scipy import stats
 from collections import defaultdict
 
-# Configure matplotlib for headless environment
+# Configure matplotlib for headless environment. # This is necessary for environments without a display (e.g., servers).
 matplotlib.use('Agg')
 
 # Set style for publication-quality plots
@@ -110,6 +110,10 @@ class StatsAggregator:
             
             for osc_type, osc_data in oscillation_results.items():
                 summary_stats = osc_data.get('summary_stats', {})
+                
+                # Handle case where summary_stats might be a numpy array
+                if isinstance(summary_stats, np.ndarray):
+                    summary_stats = {}
                 
                 organized[osc_type][condition].append({
                     'sample': sample,

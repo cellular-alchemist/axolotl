@@ -5126,7 +5126,7 @@ class LFPDataProcessor:
                 
                 # Update channels_to_process and channel_map
                 channels_to_process = valid_indices
-                channel_map = {i: valid_indices[i] for i in range(len(valid_indices))}
+                channel_map = {i: valid_channels[i] for i in range(len(valid_indices))}
                 
                 print(f"Using {len(valid_indices)} channels that are neighbors to neurons.")
                 

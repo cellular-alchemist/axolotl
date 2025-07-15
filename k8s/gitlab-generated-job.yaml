@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: axolotl-5bc40e5e
+  namespace: braingeneers
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+      - name: axolotl
+        image: gitlab-registry.nrp-nautilus.io/cellular-alchemist/axolotl:5bc40e5e
+        imagePullPolicy: Always
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+            export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            cd /workspace
+            python /workspace/src/main.py /workspace/config/experiment_config.yaml
+        resources:
+          requests:
+            cpu: "4"
+            memory: "16Gi"
+          limits:
+            cpu: "4"
+            memory: "16Gi"
+        volumeMounts:
+        - name: output-volume
+          mountPath: /workspace/output
+        - name: prp-s3-credentials
+          mountPath: "/root/.aws/credentials"
+          subPath: "credentials"
+        - name: config-volume
+          mountPath: /workspace/config
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: gitlab-registry
+      volumes:
+      - name: output-volume
+        persistentVolumeClaim:
+          claimName: demeter-output-pvc
+      - name: prp-s3-credentials
+        secret:
+          secretName: prp-s3-credentials
+          defaultMode: 256
+      - name: config-volume
+        configMap:
+          name: axolotl-config

@@ -129,6 +129,13 @@ def process_sample_condition(sample: Dict, condition_name: str, condition: Dict,
                     if 'neuron_file_path' in config['processing']:
                         merged_params['neuron_file_path'] = config['processing']['neuron_file_path']
                 
+                # Auto-detect and use local ZIP file if neuron neighbors are enabled but no path specified
+                if (merged_params.get('use_neuron_neighbors', False) and 
+                    merged_params.get('neuron_file_path') is None and 
+                    'zip' in local_files):
+                    merged_params['neuron_file_path'] = local_files['zip']
+                    logger.info(f"    Using downloaded ZIP file for neuron neighbors: {local_files['zip']}")
+                
                 # Run oscillation detection
                 results[osc_type] = oscillation_processor.process_oscillations(
                     lfp_processor, merged_params, osc_type, sample['name'], condition_name

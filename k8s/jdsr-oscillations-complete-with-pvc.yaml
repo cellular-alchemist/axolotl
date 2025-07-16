@@ -35,7 +35,7 @@ data:
     experiment:
       name: "hippocampal_oscillations_multimodal_2023"
       s3_output_base: "s3://braingeneers/personal/dani/oscillations/results/2023-12-03-e-Hc112823_avv9hckcr1/"
-      description: "Multi-condition analysis of hippocampal oscillations: baseline vs optogenetics vs kainic acid"
+      description: "Multi-condition analysis of hippocampal oscillations: baseline vs optogenetics vs kainic acid - ALL ELECTRODES (no spike sorting dependency)"
 
     # Define oscillation types based on neuroscience literature
     oscillation_types:
@@ -99,9 +99,10 @@ data:
       analysis_window:
         start: 0
         length: null
-      # Channel processing options - disable spike dependency
-      use_neuron_neighbors: false
-      neuron_file_path: null
+      # Channel processing options
+      # Completely disable neuron neighbor filtering - use ALL electrodes
+      use_neuron_neighbors: false  # DISABLED - analyze all electrodes
+      neuron_file_path: null       # No spike sorting data needed
 
     # Visualization parameters
     visualization:
@@ -119,21 +120,18 @@ data:
             description: "Control recording"
             files:
               h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112723_hckcr1_21841_120323_base2.raw.h5"
-              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_base2_acqm.zip"
               npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112723_hckcr1_21841_120323_base2_lfp.npz"
           
           optogenetics:
             description: "Optogenetic intervention"
             files:
               h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112823_avv9hckcr1_21841_120323_1.raw.h5"
-              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_base2_acqm.zip"
               npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112823_avv9hckcr1_21841_120323_1_lfp.npz"
           
           acid:
             description: "Kainic acid treatment"
             files:
               h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112823_avv9hckcr1_21841_120323_3.raw.h5"
-              zip: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/derived/kilosort2/Hc112723_hckcr1_21841_120323_base2_acqm.zip"
               npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112823_avv9hckcr1_21841_120323_3_lfp.npz"
 
     # Advanced processing parameters
@@ -194,7 +192,7 @@ spec:
             echo "Conditions: baseline, optogenetics, kainic acid"
             echo "Oscillations: ripples, sharp wave ripples, fast ripples/HFOs"
             echo "Configuration: ${EXPERIMENT_CONFIG_PATH}"
-            echo "Mode: LFP-only analysis (no spike sorting dependency)"
+            echo "Mode: ALL ELECTRODES analysis (no spike sorting files)"
             python /workspace/src/main.py ${EXPERIMENT_CONFIG_PATH} --log-level DEBUG
         
         # Environment variables

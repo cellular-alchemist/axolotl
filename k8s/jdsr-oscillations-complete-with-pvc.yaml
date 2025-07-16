@@ -48,6 +48,7 @@ data:
         min_duration: 30
         max_duration: 300
         require_sharp_wave: false
+        lfp_key: "lfp"
         
       # Sharp Wave-Ripples: Combined events with sharp wave + 110-200 Hz ripples
       sharp_wave_ripples:
@@ -59,6 +60,9 @@ data:
         max_duration: 200
         require_sharp_wave: true
         sharp_wave_window: 60
+        sharp_wave_threshold: 2.0
+        sharp_wave_band: [1, 30]
+        lfp_key: "lfp"
         
       # Fast Ripples/HFOs: 200-500 Hz, very brief, pathological markers
       fast_ripples:
@@ -69,6 +73,7 @@ data:
         min_duration: 10
         max_duration: 50
         require_sharp_wave: false
+        lfp_key: "lfp"
 
     # Processing parameters
     processing:
@@ -94,6 +99,9 @@ data:
       analysis_window:
         start: 0
         length: null
+      # Channel processing options - disable spike dependency
+      use_neuron_neighbors: false
+      neuron_file_path: null
 
     # Visualization parameters
     visualization:
@@ -186,7 +194,8 @@ spec:
             echo "Conditions: baseline, optogenetics, kainic acid"
             echo "Oscillations: ripples, sharp wave ripples, fast ripples/HFOs"
             echo "Configuration: ${EXPERIMENT_CONFIG_PATH}"
-            python /workspace/src/main.py ${EXPERIMENT_CONFIG_PATH}
+            echo "Mode: LFP-only analysis (no spike sorting dependency)"
+            python /workspace/src/main.py ${EXPERIMENT_CONFIG_PATH} --log-level DEBUG
         
         # Environment variables
         env:

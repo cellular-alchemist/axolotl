@@ -5118,28 +5118,36 @@ class LFPDataProcessor:
                 # Create mapping from channel number to index in waves array
                 channel_to_index = {ch: i for i, ch in enumerate(config_channels)}
                 
-                # Find channels that are neighbors of neurons and exist in our data
+                # Find channels that are neighbors of neurons AND exist in our current recording data
+                # This ensures we only process channels that actually exist in this specific recording
                 valid_channels = sorted(neighbor_channels_set.intersection(set(config_channels)))
                 
-                # Convert to channel indices
-                valid_indices = [channel_to_index[ch] for ch in valid_channels if ch in channel_to_index]
-                
-                # Update channels_to_process and channel_map
-                channels_to_process = valid_indices
-                channel_map = {i: valid_channels[i] for i in range(len(valid_indices))}
-                
-                print(f"Using {len(valid_indices)} channels that are neighbors to neurons.")
+                if len(valid_channels) == 0:
+                    print(f"Warning: No neuron neighbor channels found in current recording. Using all {n_channels} channels.")
+                    # Fall back to processing all channels if no neighbors are found
+                    valid_channels = list(range(n_channels))
+                    channels_to_process = np.arange(n_channels)
+                    channel_map = {i: i for i in range(n_channels)}
+                else:
+                    # Convert to channel indices that exist in the current recording
+                    valid_indices = [channel_to_index[ch] for ch in valid_channels if ch in channel_to_index]
+                    
+                    # Update channels_to_process and channel_map
+                    channels_to_process = valid_indices
+                    # Fix the channel mapping: map from processing index to original channel number
+                    channel_map = {i: valid_channels[valid_indices.index(idx)] for i, idx in enumerate(valid_indices)}
+                    
+                    print(f"Using {len(valid_indices)} channels that are neighbors to neurons and exist in current recording.")
                 
             except Exception as e:
-                print(f"Error loading neuron data: {str(e)}. Using all channels.")
-                # Continue with all channels if there's an error
-                # Properly initialize fallback values
+                print(f"Error loading neuron data: {str(e)}. Using all channels for this recording.")
+                # Continue with all channels if there's an error - each recording processes independently
                 valid_channels = list(range(n_channels))
                 channels_to_process = np.arange(n_channels)
                 channel_map = {i: i for i in range(n_channels)}
         
         # Process each channel
-        for i, ch in enumerate(channels_to_process):
+        for ch_idx, ch in enumerate(channels_to_process):
             # Get filtered signal for this channel (sliced to time window)
             wideband_signal = self.waves[wideband_key][ch, start_idx:end_idx]
             narrowband_signal = self.waves[narrowband_key][ch, start_idx:end_idx]
@@ -5176,7 +5184,7 @@ class LFPDataProcessor:
             # Ensure same number of start and end events
             if len(rising_edges) == 0 or len(falling_edges) == 0:
                 # Use the original channel index as key for consistent mapping
-                ripples[channel_map[i]] = pd.DataFrame(columns=['start_time', 'end_time', 'peak_time', 'peak_normalized_power', 'duration', 'has_sharp_wave'])
+                ripples[channel_map[ch_idx]] = pd.DataFrame(columns=['start_time', 'end_time', 'peak_time', 'peak_normalized_power', 'duration', 'has_sharp_wave'])
                 continue
                 
             if rising_edges[0] > falling_edges[0]:
@@ -5188,20 +5196,20 @@ class LFPDataProcessor:
             first_pass = np.column_stack((rising_edges, falling_edges))
             
             if len(first_pass) == 0:
-                ripples[channel_map[i]] = pd.DataFrame(columns=['start_time', 'end_time', 'peak_time', 'peak_normalized_power', 'duration', 'has_sharp_wave'])
+                ripples[channel_map[ch_idx]] = pd.DataFrame(columns=['start_time', 'end_time', 'peak_time', 'peak_normalized_power', 'duration', 'has_sharp_wave'])
                 continue
             
             # Second pass: Merge ripples if inter-ripple period is too short
             merged_ripples = []
             current_ripple = first_pass[0]
             
-            for i in range(1, len(first_pass)):
-                if first_pass[i, 0] - current_ripple[1] < min_interval_samples:
+            for ripple_idx in range(1, len(first_pass)):
+                if first_pass[ripple_idx, 0] - current_ripple[1] < min_interval_samples:
                     # Merge
-                    current_ripple[1] = first_pass[i, 1]
+                    current_ripple[1] = first_pass[ripple_idx, 1]
                 else:
                     merged_ripples.append(current_ripple)
-                    current_ripple = first_pass[i]
+                    current_ripple = first_pass[ripple_idx]
             
             merged_ripples.append(current_ripple)
             second_pass = np.array(merged_ripples)
@@ -5222,7 +5230,7 @@ class LFPDataProcessor:
                     peak_powers.append(max_value)
             
             if len(third_pass) == 0:
-                ripples[ch] = pd.DataFrame(columns=['start_time', 'end_time', 'peak_time', 'peak_normalized_power', 'duration', 'has_sharp_wave'])
+                ripples[channel_map[ch_idx]] = pd.DataFrame(columns=['start_time', 'end_time', 'peak_time', 'peak_normalized_power', 'duration', 'has_sharp_wave'])
                 continue
                 
             third_pass = np.array(third_pass)
@@ -5254,7 +5262,7 @@ class LFPDataProcessor:
                 sw_threshold = sw_mean - sharp_wave_threshold * sw_std
                 
                 # Check each candidate ripple
-                for i, peak_idx in enumerate(final_peaks):
+                for ripple_idx, peak_idx in enumerate(final_peaks):
                     # Define window around ripple
                     sw_start = max(0, peak_idx - sharp_wave_window_samples)
                     sw_end = min(len(sw_signal) - 1, peak_idx + sharp_wave_window_samples)
@@ -5264,7 +5272,7 @@ class LFPDataProcessor:
                     
                     # Check if any point in the segment exceeds the negative threshold
                     if np.min(sw_segment) < sw_threshold:
-                        has_sharp_wave[i] = True
+                        has_sharp_wave[ripple_idx] = True
             
             # Apply sharp wave filter if required
             if require_sharp_wave:
@@ -5290,7 +5298,7 @@ class LFPDataProcessor:
             })
             
             # Store in the results dictionary using the original channel index
-            ripples[channel_map[i]] = ripple_data
+            ripples[channel_map[ch_idx]] = ripple_data
         
         # Add metadata to the ripples dictionary
         ripples['metadata'] = {

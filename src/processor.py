@@ -116,9 +116,20 @@ class OscillationProcessor:
         # LFP key for sharp wave detection
         detection_params['lfp_key'] = oscillation_params.get('lfp_key', 'lfp')
         
+        # Sharp wave band (tuple or list)
+        sharp_wave_band = oscillation_params.get('sharp_wave_band', [1, 30])
+        if isinstance(sharp_wave_band, list):
+            detection_params['sharp_wave_band'] = tuple(sharp_wave_band)
+        else:
+            detection_params['sharp_wave_band'] = sharp_wave_band
+        
         # Time window restrictions (if specified in config)
         detection_params['time_start'] = oscillation_params.get('time_start', None)
         detection_params['time_end'] = oscillation_params.get('time_end', None)
+        
+        # Neuron neighbor processing (if available)
+        detection_params['use_neuron_neighbors'] = oscillation_params.get('use_neuron_neighbors', False)
+        detection_params['neuron_file_path'] = oscillation_params.get('neuron_file_path', None)
         
         return detection_params
     

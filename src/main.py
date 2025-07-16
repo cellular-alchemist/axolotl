@@ -120,9 +120,18 @@ def process_sample_condition(sample: Dict, condition_name: str, condition: Dict,
                 results[osc_type] = dict(np.load(local_result_path, allow_pickle=True))
             else:
                 logger.info(f"    Running detection for: {osc_type}")
+                # Merge global processing parameters with oscillation-specific parameters
+                merged_params = osc_params.copy()
+                if 'processing' in config:
+                    # Add global processing parameters
+                    if 'use_neuron_neighbors' in config['processing']:
+                        merged_params['use_neuron_neighbors'] = config['processing']['use_neuron_neighbors']
+                    if 'neuron_file_path' in config['processing']:
+                        merged_params['neuron_file_path'] = config['processing']['neuron_file_path']
+                
                 # Run oscillation detection
                 results[osc_type] = oscillation_processor.process_oscillations(
-                    lfp_processor, osc_params, osc_type, sample['name'], condition_name
+                    lfp_processor, merged_params, osc_type, sample['name'], condition_name
                 )
                 
                 # Save results locally

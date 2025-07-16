@@ -44,13 +44,18 @@ def load_recording_data(file_paths: Dict[str, str]) -> 'LFPDataProcessor':
         _validate_file_paths(file_paths)
         
         # Load spike curation data if available
-        if 'zip' in file_paths:
+        if 'zip' in file_paths and os.path.exists(file_paths['zip']):
             logger.debug("Loading spike curation data")
-            train, neuron_data, config, fs = load_curation(file_paths['zip'])
-            train = [np.array(t) * 1000 for t in train]  # Convert to milliseconds
+            try:
+                train, neuron_data, config, fs = load_curation(file_paths['zip'])
+                train = [np.array(t) * 1000 for t in train]  # Convert to milliseconds
+                logger.info(f"Loaded spike data: {len(train)} units")
+            except Exception as e:
+                logger.warning(f"Failed to load spike data: {str(e)}. Continuing without spike data.")
+                train, neuron_data, config, fs = [], {}, {}, 20000  # Default sampling rate
         else:
             logger.info("No spike data available, proceeding with LFP-only analysis")
-            train, neuron_data, config, fs = [], [], {}, 1000  # Default sampling rate
+            train, neuron_data, config, fs = [], {}, {}, 20000  # Default sampling rate
         
         # Load Maxwell raw data info
         logger.debug("Loading Maxwell raw data info")

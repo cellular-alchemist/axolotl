@@ -197,11 +197,15 @@ def download_condition_files(files: Dict, temp_dir: Path, s3_handler: S3Handler,
     """Download all required files for a condition"""
     local_files = {}
     
+    # Build file mapping dynamically based on what's available in config
     file_mapping = {
         'h5': ('raw.h5', files['h5']),
-        'zip': ('spike.zip', files['zip']),
         'npz': ('lfp.npz', files['npz'])
     }
+    
+    # Only add ZIP file if it exists in the configuration
+    if 'zip' in files:
+        file_mapping['zip'] = ('spike.zip', files['zip'])
     
     for file_type, (local_name, s3_path) in file_mapping.items():
         local_path = temp_dir / local_name

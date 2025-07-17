@@ -22,24 +22,41 @@ def make_json_serializable(obj):
     """Convert pandas DataFrames and numpy arrays to JSON serializable format"""
     import pandas as pd
     
-    if isinstance(obj, dict):
-        return {key: make_json_serializable(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [make_json_serializable(item) for item in obj]
-    elif isinstance(obj, pd.DataFrame):
-        return obj.to_dict('records')
-    elif isinstance(obj, pd.Series):
-        return obj.to_dict()
-    elif hasattr(obj, 'to_dict') and hasattr(obj, 'iloc'):  # Additional pandas check
-        return obj.to_dict('records')
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, (np.integer, np.floating, np.bool_)):
-        return obj.item()
-    elif pd.isna(obj):
-        return None
-    else:
-        return obj
+    try:
+        if isinstance(obj, dict):
+            return {key: make_json_serializable(value) for key, value in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [make_json_serializable(item) for item in obj]
+        elif isinstance(obj, pd.DataFrame):
+            # Convert DataFrame to dict, handling any problematic values
+            return obj.fillna('null').to_dict('records')
+        elif isinstance(obj, pd.Series):
+            # Convert Series to dict, handling any problematic values  
+            return obj.fillna('null').to_dict()
+        elif hasattr(obj, 'to_dict') and hasattr(obj, 'iloc'):  # Additional pandas check
+            return obj.fillna('null').to_dict('records')
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, (np.integer, np.floating, np.bool_)):
+            return obj.item()
+        elif isinstance(obj, (np.datetime64, pd.Timestamp)):
+            return str(obj)
+        elif pd.isna(obj):
+            return None
+        elif hasattr(obj, '__dict__'):
+            # Handle objects with attributes by converting to dict
+            return make_json_serializable(obj.__dict__)
+        else:
+            # Try to convert to string as last resort for unknown types
+            try:
+                # Test if it's already JSON serializable
+                json.dumps(obj)
+                return obj
+            except (TypeError, ValueError):
+                return str(obj)
+    except Exception as e:
+        # If all else fails, convert to string representation
+        return f"<non-serializable: {type(obj).__name__}>"
 
 # Configure matplotlib for headless environment
 import matplotlib
@@ -290,7 +307,28 @@ def aggregate_statistics(all_results: List[Dict], config: Dict, s3_handler: S3Ha
         }
         
         # Make the entire summary data JSON serializable
-        serializable_summary = make_json_serializable(summary_data)
+        try:
+            serializable_summary = make_json_serializable(summary_data)
+            logger.debug("Successfully converted summary data to JSON serializable format")
+        except Exception as json_error:
+            logger.warning(f"Error making summary JSON serializable: {json_error}")
+            # Create a simplified summary without the detailed results
+            serializable_summary = {
+                'experiment_name': config['experiment']['name'],
+                'processing_completed': datetime.now().isoformat(),
+                'total_conditions_processed': len(all_results),
+                'successful_conditions': len([r for r in all_results if r['status'] == 'success']),
+                'failed_conditions': len([r for r in all_results if r['status'] == 'failed']),
+                'results_summary': [
+                    {
+                        'status': r.get('status', 'unknown'),
+                        'sample': r.get('sample', 'unknown'),
+                        'condition': r.get('condition', 'unknown'),
+                        'oscillation_types_processed': r.get('oscillation_types_processed', []),
+                        'processing_time': r.get('processing_time', 'unknown')
+                    } for r in all_results
+                ]
+            }
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump(serializable_summary, f, indent=2)

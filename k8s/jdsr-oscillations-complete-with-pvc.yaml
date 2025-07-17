@@ -34,8 +34,8 @@ data:
     # Hippocampal Oscillations Experiment Configuration
     experiment:
       name: "hippocampal_oscillations_multimodal_2023"
-      s3_output_base: "s3://braingeneers/personal/dani/oscillations/results/2023-12-03-e-Hc112823_avv9hckcr1/"
-      description: "Multi-condition analysis of hippocampal oscillations: baseline vs optogenetics vs kainic acid - ALL ELECTRODES (no spike sorting dependency)"
+      s3_output_base: "s3://braingeneers/personal/dani/oscillations/results/multi_sample_experiment/"
+      description: "Multi-sample, multi-condition analysis of hippocampal oscillations: baseline vs optogenetics vs kainic acid - ALL ELECTRODES (no spike sorting dependency)"
 
     # Define oscillation types based on neuroscience literature
     oscillation_types:
@@ -134,6 +134,27 @@ data:
               h5: "s3://braingeneers/ephys/2023-12-03-e-Hc112823_avv9hckcr1/original/data/Hc112823_avv9hckcr1_21841_120323_3.raw.h5"
               npz: "s3://braingeneers/personal/dani/pineal/2023-12-03-e-Hc112823_avv9hckcr1/2023-12-03-e-Hc112823_avv9hckcr1_Hc112823_avv9hckcr1_21841_120323_3_lfp.npz"
 
+      - name: "2023-11-13-e-Hc110723_hckcr1_21841"
+        description: "Second hippocampal culture sample with multimodal interventions"
+        conditions:
+          baseline:
+            description: "Control recording"
+            files:
+              h5: "s3://braingeneers/ephys/2023-11-13-e-Hc110723_hckcr1_21841/original/data/Hc110723_hckcr1_21841_111323_base.raw.h5"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-11-13-e-Hc110723_hckcr1_21841/2023-11-13-e-Hc110723_hckcr1_21841_Hc110723_hckcr1_21841_111323_base_lfp.npz"
+          
+          optogenetics:
+            description: "Optogenetic intervention"
+            files:
+              h5: "s3://braingeneers/ephys/2023-11-13-e-Hc110723_hckcr1_21841/original/data/Hc110723_hckcr1_21841_111323_1.raw.h5"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-11-13-e-Hc110723_hckcr1_21841/2023-11-13-e-Hc110723_hckcr1_21841_Hc110723_hckcr1_21841_111323_1_lfp.npz"
+          
+          acid:
+            description: "Kainic acid treatment"
+            files:
+              h5: "s3://braingeneers/ephys/2023-11-13-e-Hc110723_hckcr1_21841/original/data/Hc110723_hckcr1_21841_111323_4.raw.h5"
+              npz: "s3://braingeneers/personal/dani/pineal/2023-11-13-e-Hc110723_hckcr1_21841/2023-11-13-e-Hc110723_hckcr1_21841_Hc110723_hckcr1_21841_111323_4_lfp.npz"
+
     # Advanced processing parameters
     advanced_processing:
       enable_caching: true
@@ -164,7 +185,7 @@ metadata:
     app: axolotl
     component: oscillation-detector
     experiment: hippocampal-oscillations-2023
-    sample: "2023-12-03-e-Hc112823_avv9hckcr1"
+    sample: "multi-sample"
 spec:
   backoffLimit: 1
   template:
@@ -188,7 +209,7 @@ spec:
             export AWS_ENDPOINT_URL=https://s3.braingeneers.gi.ucsc.edu
             cd /workspace
             echo "Starting hippocampal oscillations analysis..."
-            echo "Sample: 2023-12-03-e-Hc112823_avv9hckcr1"
+            echo "Samples: 2023-12-03-e-Hc112823_avv9hckcr1, 2023-11-13-e-Hc110723_hckcr1_21841"
             echo "Conditions: baseline, optogenetics, kainic acid"
             echo "Oscillations: ripples, sharp wave ripples, fast ripples/HFOs"
             echo "Configuration: ${EXPERIMENT_CONFIG_PATH}"

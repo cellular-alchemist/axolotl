@@ -5399,17 +5399,29 @@ class LFPDataProcessor:
                 print(f"Warning: sort_by field '{sort_by}' not found. Sorting by peak power.")
                 ripple_df = ripple_df.sort_values('peak_normalized_power', ascending=False).iloc[:n_ripples]
         
-        # Create the figure
-        n_cols = min(5, len(ripple_df))
-        n_rows = int(np.ceil(len(ripple_df) / n_cols))
+        # Create the figure with dynamic rows based on available components
+        n_cols = min(3, len(ripple_df))  # Max 3 columns to match reference layout
+        n_ripples_to_show = min(len(ripple_df), n_cols * 3)  # Show max 9 ripples (3x3 grid)
+        ripple_df_subset = ripple_df.iloc[:n_ripples_to_show]
         
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
+        # Calculate subplot layout: dynamic rows based on available components
+        if show_sw and sw_signal is not None:
+            n_rows = 3  # Sharp Wave Component, Ripple Band Component, Clean Waveform
+            row_labels = ["Sharp Wave Component", "Ripple Band Component", "Clean Waveform"]
+        else:
+            n_rows = 2  # Only Ripple Band Component, Clean Waveform
+            row_labels = ["Ripple Band Component", "Clean Waveform"]
+        
+        actual_cols = min(n_cols, len(ripple_df_subset))
+        
+        fig, axes = plt.subplots(n_rows, actual_cols, figsize=figsize, squeeze=False)
         
         # Plot each ripple
-        for i, (idx, ripple) in enumerate(ripple_df.iterrows()):
-            row = i // n_cols
-            col = i % n_cols
-            ax = axes[row, col]
+        for i, (idx, ripple) in enumerate(ripple_df_subset.iterrows()):
+            if i >= actual_cols:  # Limit to available columns
+                break
+                
+            col = i
             
             # Calculate window boundaries
             start_time = ripple['peak_time'] - window / 2
@@ -5428,72 +5440,96 @@ class LFPDataProcessor:
             wide_segment = wideband_signal[start_idx:end_idx]
             narrow_segment = narrowband_signal[start_idx:end_idx]
             
-            # Plot signals
-            if raw_signal is not None:
-                raw_segment = raw_signal[start_idx:end_idx]
-                ax.plot(t_segment, raw_segment, 'k-', alpha=0.5, label='Raw LFP')
-            
-            ax.plot(t_segment, narrow_segment, 'b-', label='Narrow-band')
-            ax.plot(t_segment, wide_segment, 'r-', label='Wide-band')
-            
-            # Add sharp wave trace if available
+            # Set up row indices based on available components
             if show_sw and sw_signal is not None:
+                sw_row, ripple_row, clean_row = 0, 1, 2
+            else:
+                sw_row, ripple_row, clean_row = None, 0, 1
+            
+            # Row 0 (or skip): Sharp Wave Component (only if enabled and available)
+            if sw_row is not None:
+                ax0 = axes[sw_row, col]
                 sw_segment = sw_signal[start_idx:end_idx]
-                ax.plot(t_segment, sw_segment, 'g-', alpha=0.7, linewidth=1.5, label='Sharp Wave')
+                ax0.plot(t_segment, sw_segment, 'b-', linewidth=1.5)
                 
                 # Add sharp wave threshold line if available
                 if 'sharp_wave_threshold' in metadata:
                     sw_mean = np.mean(sw_signal)
                     sw_std = np.std(sw_signal)
                     sw_threshold = sw_mean - metadata['sharp_wave_threshold'] * sw_std
-                    ax.axhline(y=sw_threshold, color='g', linestyle='--', alpha=0.5, label='SW Threshold')
+                    ax0.axhline(y=sw_threshold, color='g', linestyle='--', alpha=0.7)
+                
+                ax0.set_title(f"Ch {channel}: Sharp Wave Component\nPower: {ripple['peak_normalized_power']:.2f}", fontsize=10)
+                ax0.set_xlim(start_time, end_time)
             
-            # Mark ripple boundaries
-            ax.axvline(ripple['start_time'], color='g', linestyle='--', label='Start')
-            ax.axvline(ripple['peak_time'], color='m', linestyle='-', label='Peak')
-            ax.axvline(ripple['end_time'], color='r', linestyle='--', label='End')
+            # Ripple Band Component  
+            ax1 = axes[ripple_row, col]
+            ax1.plot(t_segment, narrow_segment, 'r-', linewidth=1.0)
+            if sw_row is not None:
+                ax1.set_title(f"Ripple Band Component\nDuration: {ripple['duration']*1000:.1f} ms", fontsize=10)
+            else:
+                ax1.set_title(f"Ch {channel}: Ripple Band Component\nPower: {ripple['peak_normalized_power']:.2f}, Duration: {ripple['duration']*1000:.1f} ms", fontsize=10)
+            ax1.set_xlim(start_time, end_time)
             
-            # Set title with ripple info
-            duration_ms = ripple['duration'] * 1000
-            ax.set_title(f"Ripple {idx}\nPower: {ripple['peak_normalized_power']:.2f}\nDuration: {duration_ms:.1f} ms")
+            # Clean Waveform (Max amplitude filtered signal)
+            ax2 = axes[clean_row, col]
+            ax2.plot(t_segment, wide_segment, 'k-', linewidth=1.0)
+            ax2.set_title(f"Clean Waveform\nMax amplitude: {np.max(np.abs(wide_segment)):.2f} μV", fontsize=10)
+            ax2.set_xlim(start_time, end_time)
+            ax2.set_xlabel('Time from peak (s)')
             
-            # Only add legend to the first subplot
-            if i == 0:
-                ax.legend(fontsize='small')
+            # Mark ripple boundaries on all subplots
+            active_axes = [ax1, ax2]
+            if sw_row is not None:
+                active_axes.insert(0, axes[sw_row, col])
             
-            # Set x-axis limits
-            ax.set_xlim(start_time, end_time)
+            for ax_idx, ax in enumerate(active_axes):
+                ax.axvline(ripple['start_time'], color='g', linestyle='--', alpha=0.7, label='Start' if ax_idx == 0 else '')
+                ax.axvline(ripple['peak_time'], color='m', linestyle='-', alpha=0.8, label='Peak' if ax_idx == 0 else '')
+                ax.axvline(ripple['end_time'], color='r', linestyle='--', alpha=0.7, label='End' if ax_idx == 0 else '')
+                
+                # Remove top and right spines for cleaner look
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
             
-            # Only add x-label to bottom row
-            if row == n_rows - 1:
-                ax.set_xlabel('Time (s)')
-            
-            # Only add y-label to first column
+            # Add y-labels to leftmost column only
             if col == 0:
-                ax.set_ylabel('Amplitude')
+                for row in range(n_rows):
+                    axes[row, col].set_ylabel('Amplitude')
+            
+            # Add legend only to the first subplot
+            if i == 0:
+                axes[0, col].legend(fontsize='small', loc='upper right')
         
-        # Remove empty subplots
-        for i in range(len(ripple_df), n_rows * n_cols):
-            row = i // n_cols
-            col = i % n_cols
-            fig.delaxes(axes[row, col])
+        # Remove any unused subplots
+        for col in range(actual_cols, n_cols):
+            if col < axes.shape[1]:
+                for row in range(n_rows):
+                    fig.delaxes(axes[row, col])
         
         plt.tight_layout()
-        # Add metadata about time window
-        metadata = ripples['metadata']
-        time_str = f" ({metadata['time_start']:.1f}s - {metadata['time_end']:.1f}s)" if 'time_start' in metadata else ""
         
-        plt.suptitle(f"Channel {channel} - Detected Ripples{time_str}", fontsize=16)
-        plt.subplots_adjust(top=0.9)
+        # Add overall title with appropriate description
+        duration_range = f" ({metadata['time_start']:.1f}s - {metadata['time_end']:.1f}s)" if 'time_start' in metadata else ""
+        page_info = f"Ripples 1-{len(ripple_df_subset)} of {len(ripple_df)}"
+        
+        if show_sw and sw_signal is not None:
+            title_prefix = "Sharp Wave Ripple Components with Waveforms"
+        else:
+            title_prefix = "Ripple Components with Waveforms"
+        
+        plt.suptitle(f"{title_prefix} - Page 1/{int(np.ceil(len(ripple_df)/actual_cols))}\n{page_info}", 
+                     fontsize=14, y=0.98)
+        plt.subplots_adjust(top=0.92, hspace=0.4, wspace=0.3)
         
         return fig
 
-    def plot_ripple_rate_heatmap(self, ripples, figsize=(10, 8), cmap='viridis', 
+    def plot_ripple_rate_heatmap(self, ripples, figsize=(10, 8), cmap='inferno', 
                             exclude_empty=True, interpolation='bicubic',
                             show_labels=True, show_stats=True):
         """
-        Create a heatmap of ripple detection rates across the electrode array,
-        using the downsample factor and proper spatial representation.
+        Create a scatter plot visualization of ripple detection rates across the electrode array,
+        using circular markers with size proportional to ripple rate.
         
         Parameters:
         -----------
@@ -5502,11 +5538,11 @@ class LFPDataProcessor:
         figsize : tuple
             Figure size
         cmap : str
-            Colormap name
+            Colormap name (default: 'inferno')
         exclude_empty : bool
             Whether to exclude channels with no ripples from color scaling
         interpolation : str
-            Interpolation method for the heatmap display
+            Kept for compatibility, not used in scatter plot
         show_labels : bool
             Whether to show text labels with channel numbers and rates
         show_stats : bool
@@ -5515,32 +5551,27 @@ class LFPDataProcessor:
         Returns:
         --------
         matplotlib.figure.Figure
-            Figure object containing the heatmap
+            Figure object containing the scatter plot
         """
         import matplotlib.pyplot as plt
         import numpy as np
-        
-        # Calculate grid dimensions (similar to create_matrix_sequence)
-        num_rows = int(self.data_df['y_mod'].max() + 1)
-        num_cols = int(self.data_df['x_mod'].max() + 1)
-        
-        # Calculate downsampled dimensions
-        ds_rows = num_rows // self.downsample_factor + 1
-        ds_cols = num_cols // self.downsample_factor + 1
-        
-        # Initialize ripple rate matrix with downsampled dimensions
-        ripple_rate = np.zeros((ds_rows, ds_cols), dtype=np.float32)
-        count_matrix = np.zeros((ds_rows, ds_cols), dtype=np.int32)  # To track how many electrodes in each bin
+        from matplotlib.colors import Normalize
         
         # Extract time window from metadata
         metadata = ripples['metadata']
         duration = (metadata['time_end'] - metadata['time_start'])  # in seconds
         
+        # Collect electrode positions and ripple rates
+        x_positions = []
+        y_positions = []
+        ripple_rates = []
+        channels = []
+        
         # Count ripples for each channel
-        channels = self.data_df['channel'].values
-        for ch_idx, channel in enumerate(channels):
+        for ch_idx, channel in enumerate(self.data_df['channel'].values):
             if ch_idx in ripples and isinstance(ripples[ch_idx], pd.DataFrame):
                 n_ripples = len(ripples[ch_idx])
+                ripple_rate = n_ripples / duration if duration > 0 else 0
                 
                 # Get the downsampled coordinates
                 x_mod = self.data_df.iloc[ch_idx]['x_mod']
@@ -5550,73 +5581,80 @@ class LFPDataProcessor:
                 x_ds = x_mod // self.downsample_factor
                 y_ds = y_mod // self.downsample_factor
                 
-                # Ensure coordinates are within bounds
-                if 0 <= x_ds < ds_cols and 0 <= y_ds < ds_rows:
-                    # Add ripple rate (Hz) to the matrix
-                    ripple_rate[y_ds, x_ds] += n_ripples / duration if duration > 0 else 0
-                    count_matrix[y_ds, x_ds] += 1
+                x_positions.append(x_ds)
+                y_positions.append(y_ds)
+                ripple_rates.append(ripple_rate)
+                channels.append(channel)
+            else:
+                # Include electrodes with zero ripples
+                x_mod = self.data_df.iloc[ch_idx]['x_mod']
+                y_mod = self.data_df.iloc[ch_idx]['y_mod']
+                
+                x_ds = x_mod // self.downsample_factor
+                y_ds = y_mod // self.downsample_factor
+                
+                x_positions.append(x_ds)
+                y_positions.append(y_ds)
+                ripple_rates.append(0.0)
+                channels.append(channel)
         
-        # Average by count (for bins with multiple electrodes)
-        with np.errstate(divide='ignore', invalid='ignore'):
-            ripple_rate = np.divide(ripple_rate, count_matrix, 
-                                where=count_matrix > 0, 
-                                out=np.zeros_like(ripple_rate))
+        # Convert to numpy arrays
+        x_positions = np.array(x_positions)
+        y_positions = np.array(y_positions)
+        ripple_rates = np.array(ripple_rates)
         
-        # Create the heatmap
-        fig, ax = plt.subplots(figsize=figsize)
+        # Create the scatter plot
+        fig, ax = plt.subplots(figsize=figsize, facecolor='white')
+        ax.set_facecolor('white')
         
-        # Set color limits based on non-zero values if requested
-        if exclude_empty:
-            non_zero = ripple_rate[ripple_rate > 0]
-            vmin = np.min(non_zero) if len(non_zero) > 0 else 0
-            vmax = np.max(ripple_rate)
+        # Normalize color and size based on data range
+        if exclude_empty and np.any(ripple_rates > 0):
+            non_zero_rates = ripple_rates[ripple_rates > 0]
+            vmin = np.min(non_zero_rates)
+            vmax = np.max(ripple_rates)
         else:
             vmin = 0
-            vmax = np.max(ripple_rate)
+            vmax = np.max(ripple_rates) if len(ripple_rates) > 0 else 1
         
-        # Plot the heatmap
-        im = ax.imshow(ripple_rate, cmap=cmap, interpolation=interpolation, 
-                    origin='lower', vmin=vmin, vmax=vmax)
+        # Normalize ripple rates for color mapping
+        norm = Normalize(vmin=vmin, vmax=vmax)
+        
+        # Calculate marker sizes: proportional to ripple rate with minimum size
+        min_size = 30  # Minimum marker size to avoid disappearing electrodes
+        max_size = 200  # Maximum marker size
+        if vmax > vmin:
+            # Scale sizes proportionally to ripple rates
+            size_range = max_size - min_size
+            normalized_rates = (ripple_rates - vmin) / (vmax - vmin)
+            marker_sizes = min_size + normalized_rates * size_range
+        else:
+            # If all rates are the same, use minimum size
+            marker_sizes = np.full_like(ripple_rates, min_size)
+        
+        # Create scatter plot with circular markers
+        scatter = ax.scatter(x_positions, y_positions, s=marker_sizes, c=ripple_rates, 
+                           cmap=cmap, norm=norm, alpha=0.8, edgecolors='black', 
+                           linewidths=0.5)
         
         # Add colorbar
-        cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label('Ripple Rate (Hz)')
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label('Ripple Rate (Hz)', fontsize=12)
         
         # Set labels and title
-        ax.set_xlabel('X-coordinate (downsampled)')
-        ax.set_ylabel('Y-coordinate (downsampled)')
+        ax.set_xlabel('X-coordinate (downsampled)', fontsize=12)
+        ax.set_ylabel('Y-coordinate (downsampled)', fontsize=12)
         
         # Add title with time window information
         time_str = f" ({metadata['time_start']:.1f}s - {metadata['time_end']:.1f}s)" if 'time_start' in metadata else ""
-        ax.set_title(f'Ripple Detection Rate Across Electrode Array{time_str}')
+        ax.set_title(f'Ripple Detection Rate Across Electrode Array{time_str}', fontsize=14)
         
-        # Add grid for visualization
+        # Remove grid and spines for clean appearance
         ax.grid(False)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
         
-        # Add coordinate labels for cells with ripples
-        for y_ds in range(ds_rows):
-            for x_ds in range(ds_cols):
-                if ripple_rate[y_ds, x_ds] > 0:
-                    # Find channels in this downsampled bin
-                    bin_channels = []
-                    for ch_idx, channel in enumerate(channels):
-                        x_mod = self.data_df.iloc[ch_idx]['x_mod']
-                        y_mod = self.data_df.iloc[ch_idx]['y_mod']
-                        if (x_mod // self.downsample_factor == x_ds and 
-                            y_mod // self.downsample_factor == y_ds):
-                            bin_channels.append(channel)
-                    
-                    # Add text label
-                    if bin_channels:
-                        if len(bin_channels) == 1:
-                            text = f"Ch{bin_channels[0]}\n{ripple_rate[y_ds, x_ds]:.2f}Hz"
-                        else:
-                            text = f"{len(bin_channels)} chs\n{ripple_rate[y_ds, x_ds]:.2f}Hz"
-                        
-                        ax.text(x_ds, y_ds, text, 
-                            ha="center", va="center", 
-                            color="white" if ripple_rate[y_ds, x_ds] > vmax/2 else "black",
-                            fontsize=8)
+        # Set equal aspect ratio to maintain electrode array geometry
+        ax.set_aspect('equal', adjustable='box')
         
         # Add a summary of detection parameters
         summary = (

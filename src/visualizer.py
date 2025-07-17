@@ -149,13 +149,25 @@ class OscillationVisualizer:
         
         for i, (channel, count) in enumerate(channel_counts[:n_plots]):
             try:
+                # Determine if sharp wave detection is enabled for this oscillation type
+                # Check the ripples metadata to see if sharp wave is required
+                ripples_metadata = ripples.get('metadata', {})
+                has_sharp_wave = (ripples_metadata.get('require_sharp_wave', False) and 
+                                'sharp_wave_threshold' in ripples_metadata)
+                
+                # Adjust figure size based on number of rows (2 vs 3)
+                if has_sharp_wave:
+                    fig_size = (12, 8)  # 3-row layout
+                else:
+                    fig_size = (12, 6)  # 2-row layout
+                
                 # Create visualization using LFPDataProcessor method
                 fig = lfp_processor.visualize_ripples(
                     ripples,
                     channel=channel,
                     n_ripples=ripples_per_channel,
                     window=time_window,
-                    figsize=(15, 10)
+                    figsize=fig_size
                 )
                 
                 # Add title with detection count
@@ -183,7 +195,7 @@ class OscillationVisualizer:
             fig = lfp_processor.plot_ripple_rate_heatmap(
                 ripples,
                 figsize=(10, 8),
-                cmap='viridis',
+                cmap='inferno',
                 show_labels=True,
                 show_stats=True
             )
